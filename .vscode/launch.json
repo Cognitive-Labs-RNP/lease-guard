@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Leaseguard",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://staging.rocketride.ai:443/?appid=cognitive_labs.leaseguard&rrdev=1",
+      "webRoot": "${workspaceFolder}/apps/leaseguard-ui",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/leaseguard-ui/*",
+        "webpack:///*": "*"
+      }
+    }
+  ]
+}

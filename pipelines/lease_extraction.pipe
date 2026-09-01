@@ -1,0 +1,63 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook"
+      }
+    },
+    {
+      "id": "parse_1",
+      "provider": "parse",
+      "config": {},
+      "input": [
+        { "lane": "tags", "from": "webhook_1" }
+      ]
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "config": {},
+      "input": [
+        { "lane": "text", "from": "parse_1" }
+      ]
+    },
+    {
+      "id": "llm_gemini_1",
+      "provider": "llm_gemini",
+      "config": {
+        "profile": "custom",
+        "custom": {
+          "model": "gemini-2.5-flash",
+          "modelTotalTokens": 200000,
+          "outputTokens": 8192,
+          "apikey": "${ROCKETRIDE_GEMINI_KEY}"
+        },
+        "parameters": {}
+      },
+      "input": [
+        { "lane": "questions", "from": "question_1" }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "config": { "laneName": "answers" },
+      "input": [
+        { "lane": "answers", "from": "llm_gemini_1" }
+      ]
+    }
+  ],
+  "project_id": "8fa5de20-5693-4920-af24-299d52d5d1f2",
+  "source": "webhook_1",
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "version": 1
+}
