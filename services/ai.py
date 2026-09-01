@@ -99,6 +99,11 @@ async def extract_lease(lease_text: str, *, use_groq_fallback: bool = True) -> d
 
 
 async def extract_lease_with_question(lease_text: str) -> dict[str, Any]:
+    providers = _provider_cfgs()
+    if not providers:
+        raise RuntimeError(
+            "No LLM provider keys are configured. Add ROCKETRIDE_GEMINI_KEY or ROCKETRIDE_GROQ_KEY + ROCKETRIDE_GROQ_BASE_URL to your .env file."
+        )
     question = Question(expectJson=True)
     question.addQuestion(
         "Extract the material lease terms, parties, dates, rent, escalations, deadlines, obligations, and risks. "
@@ -106,7 +111,7 @@ async def extract_lease_with_question(lease_text: str) -> dict[str, Any]:
     )
     question.addContext(lease_text)
 
-    provider_name, _ = _provider_cfgs()[0]
+    provider_name, _ = providers[0]
     client = RocketRideClient()
     async with client:
         pipeline = _load_pipeline(fallback_to_groq=provider_name == "groq")

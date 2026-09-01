@@ -109,6 +109,31 @@ CREATE INDEX IF NOT EXISTS idx_recovery_records_property_id ON recovery_records(
 CREATE INDEX IF NOT EXISTS idx_disputes_user_id ON disputes(user_id);
 CREATE INDEX IF NOT EXISTS idx_disputes_property_id ON disputes(property_id);
 
+-- The app uses the anonymous key together with Supabase Auth. Enforce that a
+-- signed-in user can access only rows they own, rather than relying on UI filters.
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE findings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE risk_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recovery_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE disputes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "owner access" ON properties;
+CREATE POLICY "owner access" ON properties FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON documents;
+CREATE POLICY "owner access" ON documents FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON audits;
+CREATE POLICY "owner access" ON audits FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON findings;
+CREATE POLICY "owner access" ON findings FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON risk_scores;
+CREATE POLICY "owner access" ON risk_scores FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON recovery_records;
+CREATE POLICY "owner access" ON recovery_records FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "owner access" ON disputes;
+CREATE POLICY "owner access" ON disputes FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
 -- Optional: keep the timestamps fresh on update.
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$

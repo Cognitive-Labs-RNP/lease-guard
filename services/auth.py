@@ -5,6 +5,8 @@ import streamlit as st
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
+from services.demo import get_demo_client, get_demo_user_id, is_demo_mode
+
 load_dotenv()
 
 
@@ -17,6 +19,10 @@ def _get_supabase_key() -> str:
 
 
 def get_supabase_client() -> Client:
+    if is_demo_mode():
+        # Demo Mode is an explicit, local-only workflow. It must not require
+        # credentials or accidentally write sample data to a real project.
+        return get_demo_client()  # type: ignore[return-value]
     url = _get_supabase_url()
     key = _get_supabase_key()
 
@@ -71,6 +77,8 @@ def login_user(email: str, password: str) -> Dict[str, Any]:
 
 
 def logout_user() -> None:
+    if is_demo_mode():
+        return
     try:
         client = get_supabase_client()
         client.auth.sign_out()
@@ -83,6 +91,8 @@ def logout_user() -> None:
 
 
 def get_current_user() -> Optional[Dict[str, Any]]:
+    if is_demo_mode():
+        return {"id": get_demo_user_id(), "email": "demo@leaseguard.local"}
     user = st.session_state.get("supabase_user")
     if user is not None:
         return user
