@@ -1,21 +1,28 @@
 """
-Analytics page for LeaseGuard.
+Analytics page for LeaseGuard AI.
 
-Historical and comparative analytics across portfolio.
+Historical and comparative multi-property analytics across risk, discrepancies,
+and capital recoveries.
 """
 
-from typing import Any, Dict
-
+from typing import Any, Dict, List
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from services.auth import get_supabase_client, require_current_user_id
-from ui.custom_theme import get_color
+from ui.custom_theme import COLORS, get_color, get_plotly_layout_theme
+from utils.ui import (
+    format_currency,
+    render_divider,
+    render_empty_state,
+    render_page_header,
+    render_section_header,
+)
 
 
-def _get_risk_scores() -> list[Dict[str, Any]]:
+def _get_risk_scores() -> List[Dict[str, Any]]:
     """Fetch all risk scores."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -23,7 +30,7 @@ def _get_risk_scores() -> list[Dict[str, Any]]:
     return response.data or []
 
 
-def _get_audits() -> list[Dict[str, Any]]:
+def _get_audits() -> List[Dict[str, Any]]:
     """Fetch all audits."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -31,7 +38,7 @@ def _get_audits() -> list[Dict[str, Any]]:
     return response.data or []
 
 
-def _get_findings() -> list[Dict[str, Any]]:
+def _get_findings() -> List[Dict[str, Any]]:
     """Fetch all findings."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -39,7 +46,7 @@ def _get_findings() -> list[Dict[str, Any]]:
     return response.data or []
 
 
-def _get_recovery_records() -> list[Dict[str, Any]]:
+def _get_recovery_records() -> List[Dict[str, Any]]:
     """Fetch all recovery records."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -47,7 +54,7 @@ def _get_recovery_records() -> list[Dict[str, Any]]:
     return response.data or []
 
 
-def _get_properties() -> list[Dict[str, Any]]:
+def _get_properties() -> List[Dict[str, Any]]:
     """Fetch user's properties."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -56,388 +63,284 @@ def _get_properties() -> list[Dict[str, Any]]:
 
 
 def render():
-    """Render the analytics page."""
-    st.markdown("## 📈 Analytics")
+    """Render the enterprise analytics and multi-property comparison dashboard."""
+    render_page_header(
+        title="Portfolio Analytics",
+        subtitle="Analyze longitudinal compliance trends, multi-property risk correlations, and capital recovery rates.",
+        icon="📈",
+    )
 
-    tab1, tab2 = st.tabs(["Historical Trends", "Property Comparison"])
-
-    with tab1:
-        st.markdown("### Historical Analysis")
-
-        properties = _get_properties()
-        prop_dict = {p["id"]: p["name"] for p in properties}
-
-        if not properties:
-            st.info("No properties yet")
-            return
-
-        # Property selector
-        selected_prop_name = st.selectbox(
-            "Select Property",
-            options=["All"] + [p["name"] for p in properties],
-            key="historical_prop_select"
+    properties = _get_properties()
+    if not properties:
+        render_empty_state(
+            title="No Portfolio Assets Available",
+            description="Add properties and run audits to generate comparative analytics.",
+            icon="📈",
         )
+        return
 
-        # Metric selector
-        metric = st.selectbox(
-            "Select Metric",
-            ["Risk Score", "Findings Count", "Potential Recovery", "Recovered Amount"],
-            key="historical_metric_select"
-        )
+    prop_dict = {p["id"]: p["name"] for p in properties}
+    prop_names = [p["name"] for p in properties]
 
-        # Date range
-        col1, col2 = st.columns(2)
-        with col1:
-            start_date = st.date_input("Start Date", key="hist_start_date")
-        with col2:
-            end_date = st.date_input("End Date", key="hist_end_date")
+    tab_hist, tab_comp = st.tabs(["Longitudinal Trends", "Multi-Property Comparison"])
 
-        # Build data for chart
-        if metric == "Risk Score":
+    # -----------------------------------------------------------------------
+    # TAB 1: HISTORICAL TRENDS
+    # -----------------------------------------------------------------------
+    with tab_hist:
+        render_section_header("Historical Metric Analysis", "Select properties and dimensions to observe historical behavior")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            selected_prop_name = st.selectbox(
+                "Filter by Property",
+                options=["All Properties"] + prop_names,
+                key="hist_prop_analytics_select",
+            )
+        with c2:
+            metric = st.selectbox(
+                "Compliance Dimension",
+                ["Risk Score Trend", "Discrepancy Volume", "Potential Recovery ($)", "Recovered Capital ($)"],
+                key="hist_metric_analytics_select",
+            )
+
+        # 1. Risk Score Trend
+        if metric == "Risk Score Trend":
             risk_scores = _get_risk_scores()
-
-            # Filter by property if selected
-            if selected_prop_name != "All":
-                selected_prop_id = next((p["id"] for p in properties if p["name"] == selected_prop_name), None)
-                risk_scores = [r for r in risk_scores if r.get("property_id") == selected_prop_id]
+            if selected_prop_name != "All Properties":
+                sel_id = next((p["id"] for p in properties if p["name"] == selected_prop_name), None)
+                risk_scores = [r for r in risk_scores if r.get("property_id") == sel_id]
 
             if risk_scores:
-                # Create time series data
                 df = pd.DataFrame([
                     {
                         "Date": r.get("calculated_at", "")[:10],
-                        "Risk Score": r.get("overall_score", 0),
-                        "Property": prop_dict.get(r.get("property_id"), "Unknown"),
+                        "Risk Score": float(r.get("overall_score", 0)),
+                        "Property": prop_dict.get(r.get("property_id"), "Property"),
                     }
                     for r in risk_scores
                 ])
 
-                if selected_prop_name == "All":
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Risk Score",
-                        color="Property",
-                        title="Risk Score Over Time",
-                        markers=True
-                    )
-                else:
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Risk Score",
-                        title=f"Risk Score for {selected_prop_name}",
-                        markers=True
-                    )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No risk score data available")
-
-        elif metric == "Findings Count":
-            findings = _get_findings()
-
-            # Group by date and property
-            data = []
-            for finding in findings:
-                date = finding.get("created_at", "")[:10]
-                prop_id = finding.get("property_id")
-                prop_name = prop_dict.get(prop_id, "Unknown")
-
-                if selected_prop_name == "All" or prop_name == selected_prop_name:
-                    data.append({"Date": date, "Count": 1, "Property": prop_name})
-
-            if data:
-                df = pd.DataFrame(data)
-                df = df.groupby(["Date", "Property"]).size().reset_index(name="Count")
-
-                if selected_prop_name == "All":
-                    fig = px.bar(
-                        df,
-                        x="Date",
-                        y="Count",
-                        color="Property",
-                        title="Findings Over Time",
-                    )
-                else:
-                    fig = px.bar(
-                        df,
-                        x="Date",
-                        y="Count",
-                        title=f"Findings for {selected_prop_name}",
-                    )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No findings data")
-
-        elif metric == "Potential Recovery":
-            findings = _get_findings()
-
-            # Group by date
-            data = []
-            for finding in findings:
-                date = finding.get("created_at", "")[:10]
-                prop_id = finding.get("property_id")
-                prop_name = prop_dict.get(prop_id, "Unknown")
-                amount = float(finding.get("amount", 0))
-
-                if selected_prop_name == "All" or prop_name == selected_prop_name:
-                    data.append({"Date": date, "Amount": amount, "Property": prop_name})
-
-            if data:
-                df = pd.DataFrame(data)
-                df = df.groupby(["Date", "Property"])["Amount"].sum().reset_index()
-
-                if selected_prop_name == "All":
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Amount",
-                        color="Property",
-                        title="Potential Recovery Over Time",
-                        markers=True
-                    )
-                else:
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Amount",
-                        title=f"Potential Recovery for {selected_prop_name}",
-                        markers=True
-                    )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                    yaxis_title="Amount ($)",
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No recovery data")
-
-        else:  # Recovered Amount
-            recovery = _get_recovery_records()
-
-            # Filter for recovered status
-            recovery = [r for r in recovery if r.get("status") == "Recovered"]
-
-            # Group by date
-            data = []
-            for rec in recovery:
-                date = rec.get("created_at", "")[:10]
-                prop_id = rec.get("property_id")
-                prop_name = prop_dict.get(prop_id, "Unknown")
-                amount = float(rec.get("amount", 0))
-
-                if selected_prop_name == "All" or prop_name == selected_prop_name:
-                    data.append({"Date": date, "Amount": amount, "Property": prop_name})
-
-            if data:
-                df = pd.DataFrame(data)
-                df = df.groupby(["Date", "Property"])["Amount"].sum().reset_index()
-
-                if selected_prop_name == "All":
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Amount",
-                        color="Property",
-                        title="Recovered Amount Over Time",
-                        markers=True
-                    )
-                else:
-                    fig = px.line(
-                        df,
-                        x="Date",
-                        y="Amount",
-                        title=f"Recovered Amount for {selected_prop_name}",
-                        markers=True
-                    )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                    yaxis_title="Amount ($)",
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No recovered amounts yet")
-
-    with tab2:
-        st.markdown("### Property Comparison")
-
-        properties = _get_properties()
-
-        if len(properties) < 2:
-            st.info("Need at least 2 properties to compare")
-            return
-
-        prop_names = [p["name"] for p in properties]
-        prop_dict = {p["id"]: p["name"] for p in properties}
-
-        # Multi-select properties
-        selected_props = st.multiselect(
-            "Select Properties to Compare",
-            prop_names,
-            default=prop_names[:2],
-            key="compare_props_select"
-        )
-
-        if not selected_props:
-            st.info("Select at least one property")
-            return
-
-        # Metric selector
-        metric = st.selectbox(
-            "Comparison Metric",
-            ["Risk Score", "Findings Count", "Potential Recovery", "Recovered Amount"],
-            key="compare_metric_select"
-        )
-
-        # Build comparison data
-        selected_prop_ids = [p["id"] for p in properties if p["name"] in selected_props]
-
-        if metric == "Risk Score":
-            risk_scores = _get_risk_scores()
-            risk_scores = [r for r in risk_scores if r.get("property_id") in selected_prop_ids]
-
-            data = []
-            for score in risk_scores:
-                prop_name = prop_dict.get(score.get("property_id"), "Unknown")
-                data.append({
-                    "Property": prop_name,
-                    "Risk Score": score.get("overall_score", 0),
-                })
-
-            if data:
-                df = pd.DataFrame(data)
-                fig = px.bar(
+                fig = px.line(
                     df,
-                    x="Property",
+                    x="Date",
                     y="Risk Score",
-                    title="Risk Score Comparison",
-                    color="Risk Score",
-                    color_continuous_scale="RdYlGn_r"
+                    color="Property" if selected_prop_name == "All Properties" else None,
+                    title=f"Risk Score Trajectory ({selected_prop_name})",
+                    markers=True,
+                    color_discrete_sequence=[get_color("brand_blue"), get_color("brand_teal"), get_color("warning")],
                 )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                )
-
+                layout = get_plotly_layout_theme()
+                layout.update(height=380, yaxis_range=[0, 100])
+                fig.update_layout(layout)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                render_empty_state("No Risk History Available", "No calculated risk points recorded for this selection.", "📊")
 
-        elif metric == "Findings Count":
+        # 2. Discrepancy Volume
+        elif metric == "Discrepancy Volume":
             findings = _get_findings()
-            findings = [f for f in findings if f.get("property_id") in selected_prop_ids]
-
             data = []
-            for prop_id in selected_prop_ids:
-                prop_name = prop_dict.get(prop_id, "Unknown")
-                count = sum(1 for f in findings if f.get("property_id") == prop_id)
-                data.append({"Property": prop_name, "Findings": count})
+            for f in findings:
+                p_name = prop_dict.get(f.get("property_id"), "Property")
+                if selected_prop_name == "All Properties" or p_name == selected_prop_name:
+                    data.append({
+                        "Date": f.get("created_at", "")[:10],
+                        "Property": p_name,
+                    })
 
             if data:
                 df = pd.DataFrame(data)
+                df_grouped = df.groupby(["Date", "Property"]).size().reset_index(name="Findings Count")
+
                 fig = px.bar(
-                    df,
-                    x="Property",
-                    y="Findings",
-                    title="Findings Count Comparison",
-                    color="Findings",
-                    color_continuous_scale="Viridis"
+                    df_grouped,
+                    x="Date",
+                    y="Findings Count",
+                    color="Property" if selected_prop_name == "All Properties" else None,
+                    title=f"Discrepancies Identified by Date ({selected_prop_name})",
+                    color_discrete_sequence=[get_color("brand_blue"), get_color("brand_teal"), get_color("warning")],
                 )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                )
-
+                layout = get_plotly_layout_theme()
+                layout.update(height=380)
+                fig.update_layout(layout)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                render_empty_state("No Finding Logs", "No discrepancy logs found for selected criteria.", "🔎")
 
-        elif metric == "Potential Recovery":
+        # 3. Potential Recovery
+        elif metric == "Potential Recovery ($)":
             findings = _get_findings()
-            findings = [f for f in findings if f.get("property_id") in selected_prop_ids]
-
             data = []
-            for prop_id in selected_prop_ids:
-                prop_name = prop_dict.get(prop_id, "Unknown")
-                total = sum(float(f.get("amount", 0)) for f in findings if f.get("property_id") == prop_id)
-                data.append({"Property": prop_name, "Recovery": total})
+            for f in findings:
+                p_name = prop_dict.get(f.get("property_id"), "Property")
+                amt = float(f.get("amount", 0.0))
+                if selected_prop_name == "All Properties" or p_name == selected_prop_name:
+                    data.append({
+                        "Date": f.get("created_at", "")[:10],
+                        "Amount": amt,
+                        "Property": p_name,
+                    })
 
             if data:
                 df = pd.DataFrame(data)
-                fig = px.bar(
-                    df,
-                    x="Property",
-                    y="Recovery",
-                    title="Potential Recovery Comparison",
-                    color="Recovery",
-                    color_continuous_scale="Greens"
-                )
+                df_grouped = df.groupby(["Date", "Property"])["Amount"].sum().reset_index()
 
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                    yaxis_title="Amount ($)",
+                fig = px.line(
+                    df_grouped,
+                    x="Date",
+                    y="Amount",
+                    color="Property" if selected_prop_name == "All Properties" else None,
+                    title=f"Potential Recovery Value Identified ({selected_prop_name})",
+                    markers=True,
+                    color_discrete_sequence=[get_color("warning"), get_color("brand_blue"), get_color("brand_teal")],
                 )
-
+                layout = get_plotly_layout_theme()
+                layout.update(height=380, yaxis_title="Amount ($)")
+                fig.update_layout(layout)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                render_empty_state("No Recovery Potential Data", "No financial recovery amounts identified yet.", "💰")
 
-        else:  # Recovered Amount
+        # 4. Recovered Capital
+        else:
             recovery = _get_recovery_records()
-            recovery = [r for r in recovery if r.get("property_id") in selected_prop_ids and r.get("status") == "Recovered"]
-
+            rec_recovered = [r for r in recovery if r.get("status") == "Recovered"]
             data = []
-            for prop_id in selected_prop_ids:
-                prop_name = prop_dict.get(prop_id, "Unknown")
-                total = sum(float(r.get("amount", 0)) for r in recovery if r.get("property_id") == prop_id)
-                data.append({"Property": prop_name, "Recovered": total})
+            for r in rec_recovered:
+                p_name = prop_dict.get(r.get("property_id"), "Property")
+                amt = float(r.get("amount", 0.0))
+                if selected_prop_name == "All Properties" or p_name == selected_prop_name:
+                    data.append({
+                        "Date": r.get("created_at", "")[:10],
+                        "Amount": amt,
+                        "Property": p_name,
+                    })
 
             if data:
                 df = pd.DataFrame(data)
+                df_grouped = df.groupby(["Date", "Property"])["Amount"].sum().reset_index()
+
                 fig = px.bar(
-                    df,
-                    x="Property",
-                    y="Recovered",
-                    title="Recovered Amount Comparison",
-                    color="Recovered",
-                    color_continuous_scale="Blues"
+                    df_grouped,
+                    x="Date",
+                    y="Amount",
+                    color="Property" if selected_prop_name == "All Properties" else None,
+                    title=f"Capital Successfully Recovered ({selected_prop_name})",
+                    color_discrete_sequence=[get_color("success"), get_color("brand_blue")],
                 )
-
-                fig.update_layout(
-                    template="plotly_dark",
-                    plot_bgcolor=get_color("bg_secondary"),
-                    paper_bgcolor=get_color("bg_secondary"),
-                    font=dict(color=get_color("text_primary")),
-                    yaxis_title="Amount ($)",
-                )
-
+                layout = get_plotly_layout_theme()
+                layout.update(height=380, yaxis_title="Recovered ($)")
+                fig.update_layout(layout)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                render_empty_state("No Recoveries Finalized", "Mark disputed items as 'Recovered' to populate this metric.", "✅")
+
+    # -----------------------------------------------------------------------
+    # TAB 2: MULTI-PROPERTY COMPARISON
+    # -----------------------------------------------------------------------
+    with tab_comp:
+        render_section_header("Cross-Property Benchmark Matrix", "Compare key metrics across selected commercial properties")
+
+        selected_compare_props = st.multiselect(
+            "Select Properties to Benchmark",
+            prop_names,
+            default=prop_names[:min(4, len(prop_names))],
+            key="comp_multiselect",
+        )
+
+        if not selected_compare_props:
+            render_empty_state("Select Properties", "Choose at least one property to view the benchmark comparison.", "🏢")
+            return
+
+        comp_metric = st.selectbox(
+            "Benchmark Dimension",
+            ["Risk Score (Average)", "Total Discrepancies Flagged", "Total Potential Recovery ($)", "Total Recovered Capital ($)"],
+            key="comp_dim_select",
+        )
+
+        selected_ids = [p["id"] for p in properties if p["name"] in selected_compare_props]
+
+        if comp_metric == "Risk Score (Average)":
+            risk_scores = _get_risk_scores()
+            data = []
+            for p_id in selected_ids:
+                p_scores = [float(r.get("overall_score", 0)) for r in risk_scores if r.get("property_id") == p_id]
+                avg = sum(p_scores) / len(p_scores) if p_scores else 0.0
+                data.append({"Property": prop_dict.get(p_id, "Property"), "Average Risk Score": round(avg, 1)})
+
+            df_comp = pd.DataFrame(data)
+            fig = px.bar(
+                df_comp,
+                x="Property",
+                y="Average Risk Score",
+                color="Average Risk Score",
+                color_continuous_scale=["#16A34A", "#D97706", "#DC2626"],
+                title="Cross-Property Average Risk Index",
+            )
+            layout = get_plotly_layout_theme()
+            layout.update(height=360, yaxis_range=[0, 100])
+            fig.update_layout(layout)
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif comp_metric == "Total Discrepancies Flagged":
+            findings = _get_findings()
+            data = []
+            for p_id in selected_ids:
+                cnt = sum(1 for f in findings if f.get("property_id") == p_id)
+                data.append({"Property": prop_dict.get(p_id, "Property"), "Discrepancies": cnt})
+
+            df_comp = pd.DataFrame(data)
+            fig = px.bar(
+                df_comp,
+                x="Property",
+                y="Discrepancies",
+                title="Total Flagged Discrepancies per Asset",
+                color_discrete_sequence=[get_color("brand_blue")],
+            )
+            layout = get_plotly_layout_theme()
+            layout.update(height=360)
+            fig.update_layout(layout)
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif comp_metric == "Total Potential Recovery ($)":
+            findings = _get_findings()
+            data = []
+            for p_id in selected_ids:
+                tot = sum(float(f.get("amount", 0)) for f in findings if f.get("property_id") == p_id)
+                data.append({"Property": prop_dict.get(p_id, "Property"), "Potential Recovery ($)": tot})
+
+            df_comp = pd.DataFrame(data)
+            fig = px.bar(
+                df_comp,
+                x="Property",
+                y="Potential Recovery ($)",
+                title="Total Overcharge Capital Identified ($)",
+                color_discrete_sequence=[get_color("warning")],
+                text=[format_currency(v) for v in df_comp["Potential Recovery ($)"]],
+            )
+            layout = get_plotly_layout_theme()
+            layout.update(height=360)
+            fig.update_layout(layout)
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            recovery = _get_recovery_records()
+            data = []
+            for p_id in selected_ids:
+                tot = sum(float(r.get("amount", 0)) for r in recovery if r.get("property_id") == p_id and r.get("status") == "Recovered")
+                data.append({"Property": prop_dict.get(p_id, "Property"), "Recovered Amount ($)": tot})
+
+            df_comp = pd.DataFrame(data)
+            fig = px.bar(
+                df_comp,
+                x="Property",
+                y="Recovered Amount ($)",
+                title="Recaptured Capital per Asset ($)",
+                color_discrete_sequence=[get_color("success")],
+                text=[format_currency(v) for v in df_comp["Recovered Amount ($)"]],
+            )
+            layout = get_plotly_layout_theme()
+            layout.update(height=360)
+            fig.update_layout(layout)
+            st.plotly_chart(fig, use_container_width=True)

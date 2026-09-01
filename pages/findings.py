@@ -1,22 +1,37 @@
 """
-Findings page for LeaseGuard.
+Findings page for LeaseGuard AI.
 
-View, filter, and analyze audit findings with evidence.
+Filter, inspect, and analyze lease audit discrepancies with monetary breakdowns
+and contractual evidence clauses.
 """
 
-from typing import Any, Dict
-
-import pandas as pd
+from typing import Any, Dict, List, Optional
 import streamlit as st
 
 from services.auth import get_supabase_client, require_current_user_id
 from ui.custom_theme import COLORS, get_color
+from utils.ui import (
+    format_currency,
+    render_divider,
+    render_empty_state,
+    render_finding_card,
+    render_kpi_card,
+    render_page_header,
+    render_section_header,
+    render_status_badge,
+)
 
 
-def _get_findings(
-    filters: Dict[str, Any] = None
-) -> list[Dict[str, Any]]:
-    """Fetch findings with optional filters."""
+def _get_properties() -> List[Dict[str, Any]]:
+    """Fetch user's properties."""
+    user_id = require_current_user_id()
+    client = get_supabase_client()
+    response = client.table("properties").select("id, name").eq("user_id", user_id).order("name").execute()
+    return response.data or []
+
+
+def _get_findings(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """Fetch findings with optional query filters."""
     user_id = require_current_user_id()
     client = get_supabase_client()
 
@@ -36,52 +51,42 @@ def _get_findings(
     return response.data or []
 
 
-def _get_properties() -> list[Dict[str, Any]]:
-    """Fetch user's properties."""
-    user_id = require_current_user_id()
-    client = get_supabase_client()
-    response = client.table("properties").select("id, name").eq("user_id", user_id).order("name").execute()
-    return response.data or []
-
-
-def _get_finding_evidence(finding: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract evidence from finding."""
-    return {
-        "lease_evidence": finding.get("metadata", {}),
-        "invoice_evidence": finding.get("metadata", {}),
-    }
-
-
 def render():
-    """Render the findings page."""
-    st.markdown("## 🔍 Findings")
-
-    # Filters
-    st.markdown("### Filters")
-
-    col1, col2, col3, col4 = st.columns(4)
+    """Render the audit findings review page."""
+    render_page_header(
+        title="Audit Findings & Discrepancies",
+        subtitle="Review identified lease overcharges, risk classifications, and contractual citation evidence.",
+        icon="🔍",
+    )
 
     properties = _get_properties()
     prop_dict = {p["id"]: p["name"] for p in properties}
-    prop_options = ["All"] + [p["name"] for p in properties]
 
-    with col1:
-        selected_prop_name = st.selectbox("Property", prop_options, key="finding_prop")
-        selected_prop_id = next((p["id"] for p in properties if p["name"] == selected_prop_name), None) if selected_prop_name != "All" else None
+    # -----------------------------------------------------------------------
+    # Filter Bar
+    # -----------------------------------------------------------------------
+    with st.container(border=True):
+        st.markdown("<span style='font-size:0.75rem; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.04em;'>Filter Discrepancies</span>", unsafe_allow_html=True)
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col2:
-        severity = st.selectbox("Severity", ["All", "critical", "high", "medium", "low"], key="finding_severity")
-        severity_filter = None if severity == "All" else severity
+        prop_options = ["All Properties"] + [p["name"] for p in properties]
+        with col1:
+            selected_prop_name = st.selectbox("Property", prop_options, key="finding_prop_filter")
+            selected_prop_id = next((p["id"] for p in properties if p["name"] == selected_prop_name), None) if selected_prop_name != "All Properties" else None
 
-    with col3:
-        category = st.selectbox("Category", ["All", "CAM cap", "Excluded expense", "Rent escalation", "Administrative fee", "Tenant-share calculation"], key="finding_category")
-        category_filter = None if category == "All" else category
+        with col2:
+            severity = st.selectbox("Severity Level", ["All Severities", "critical", "high", "medium", "low"], key="finding_sev_filter")
+            severity_filter = None if severity == "All Severities" else severity
 
-    with col4:
-        status = st.selectbox("Status", ["All", "open", "under_review", "resolved", "closed"], key="finding_status")
-        status_filter = None if status == "All" else status
+        with col3:
+            category = st.selectbox("Category", ["All Categories", "CAM cap", "Excluded expense", "Rent escalation", "Administrative fee", "Tenant-share calculation"], key="finding_cat_filter")
+            category_filter = None if category == "All Categories" else category
 
-    # Apply filters
+        with col4:
+            status = st.selectbox("Finding Status", ["All Statuses", "open", "under_review", "resolved", "closed"], key="finding_stat_filter")
+            status_filter = None if status == "All Statuses" else status
+
+    # Query findings with active filters
     filters = {
         "property_id": selected_prop_id,
         "severity": severity_filter,
@@ -91,79 +96,67 @@ def render():
 
     findings = _get_findings(filters)
 
-    # Summary
-    st.markdown("---")
-    st.markdown(f"### Found {len(findings)} findings")
+    # -----------------------------------------------------------------------
+    # Severity KPI Counters
+    # -----------------------------------------------------------------------
+    st.markdown("<div style='height: 0.75rem;'></div>", unsafe_allow_html=True)
+
+    sev_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    total_potential = 0.0
+    for f in findings:
+        s = (f.get("severity") or "low").lower()
+        if s in sev_counts:
+            sev_counts[s] += 1
+        total_potential += float(f.get("amount", 0.0))
+
+    k1, k2, k3, k4, k5 = st.columns(5)
+    with k1:
+        render_kpi_card("Total Discrepancies", str(len(findings)), "Matching criteria", "🔍", get_color("brand_blue"))
+    with k2:
+        render_kpi_card("Critical Risk", str(sev_counts["critical"]), "Immediate action", "🔴", get_color("risk_critical"))
+    with k3:
+        render_kpi_card("High Risk", str(sev_counts["high"]), "Significant overcharge", "🟠", get_color("risk_high"))
+    with k4:
+        render_kpi_card("Medium / Low", str(sev_counts["medium"] + sev_counts["low"]), "Minor variances", "🟡", get_color("risk_moderate"))
+    with k5:
+        render_kpi_card("Potential Recovery", format_currency(total_potential), "Sum of discrepancies", "💰", get_color("success"))
+
+    st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+
+    # -----------------------------------------------------------------------
+    # Findings Cards List
+    # -----------------------------------------------------------------------
+    render_section_header("Discrepancy Details", f"Displaying {len(findings)} matching finding record(s)")
 
     if findings:
-        # Statistics
-        col1, col2, col3, col4 = st.columns(4)
-
-        severity_counts = {}
         for finding in findings:
-            sev = finding.get("severity", "low")
-            severity_counts[sev] = severity_counts.get(sev, 0) + 1
+            prop_name = prop_dict.get(finding.get("property_id"), "Property")
+            billed = float(finding.get("billed_amount") or finding.get("amount") or 0.0)
+            allowed = float(finding.get("allowed_amount") or 0.0)
+            recovery = float(finding.get("potential_recovery") or finding.get("amount") or 0.0)
 
-        with col1:
-            critical_count = severity_counts.get("critical", 0)
-            st.metric("Critical", critical_count)
+            # Extract evidence
+            meta = finding.get("metadata", {})
+            evidence = (
+                meta.get("lease_evidence", {}).get("clause", "")
+                if isinstance(meta, dict) and meta.get("lease_evidence")
+                else (meta.get("evidence", "") if isinstance(meta, dict) else "")
+            )
 
-        with col2:
-            high_count = severity_counts.get("high", 0)
-            st.metric("High", high_count)
-
-        with col3:
-            medium_count = severity_counts.get("medium", 0)
-            st.metric("Medium", medium_count)
-
-        with col4:
-            low_count = severity_counts.get("low", 0)
-            st.metric("Low", low_count)
-
-        # Findings list
-        st.markdown("---")
-
-        for i, finding in enumerate(findings):
-            with st.container(border=True):
-                col1, col2, col3 = st.columns([1, 1, 0.5])
-
-                with col1:
-                    severity = finding.get("severity", "unknown").upper()
-                    category = finding.get("category", "Unknown")
-                    st.markdown(f"### {category}")
-                    st.write(f"**Title**: {finding.get('title', 'N/A')}")
-                    st.write(f"**Description**: {finding.get('description', 'N/A')}")
-
-                with col2:
-                    col2a, col2b = st.columns(2)
-                    with col2a:
-                        st.write(f"**Severity**: {severity}")
-                        st.write(f"**Status**: {finding.get('status', 'N/A')}")
-                    with col2b:
-                        st.write(f"**Amount**: ${float(finding.get('amount', 0)):,.2f}")
-                        st.write(f"**Date**: {finding.get('created_at', 'N/A')[:10]}")
-
-                with col3:
-                    if st.button("Details", key=f"detail_{finding['id']}"):
-                        st.session_state[f"show_detail_{finding['id']}"] = True
-
-                # Expandable details
-                if st.session_state.get(f"show_detail_{finding['id']}", False):
-                    st.markdown("---")
-                    st.markdown("#### Evidence & Calculations")
-
-                    with st.expander("Lease Evidence", expanded=False):
-                        st.json(finding.get("metadata", {}))
-
-                    with st.expander("Invoice Evidence", expanded=False):
-                        st.json(finding.get("metadata", {}))
-
-                    with st.expander("Audit Details", expanded=False):
-                        audit_id = finding.get("audit_id")
-                        if audit_id:
-                            client = get_supabase_client()
-                            audit = client.table("audits").select("*").eq("id", audit_id).execute()
-                            if audit.data:
-                                st.json(audit.data[0])
+            render_finding_card(
+                category=finding.get("category", "Discrepancy"),
+                title=finding.get("title", finding.get("category", "Lease Finding")),
+                description=finding.get("description", "Discrepancy identified during lease reconciliation."),
+                severity=finding.get("severity", "Medium"),
+                billed=billed,
+                allowed=allowed,
+                recovery=recovery,
+                evidence=evidence or "Pursuant to lease terms and audited expense verification.",
+                property_name=prop_name,
+            )
     else:
-        st.info("No findings match the selected filters")
+        render_empty_state(
+            title="No Findings Match Selected Filters",
+            description="Adjust your property, category, or severity filters above to view other recorded discrepancies.",
+            icon="🔍",
+        )

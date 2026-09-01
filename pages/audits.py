@@ -1,26 +1,37 @@
 """
-Audits page for LeaseGuard.
+Audits page for LeaseGuard AI.
 
-Run lease audits and view results.
-Integrates extraction, validation, and deterministic audit engine.
+Run deterministic lease vs invoice audits with structured reconciliation,
+risk score calculations, and contract evidence inspection.
 """
 
-from typing import Any, Dict, Optional, Tuple
-
+from typing import Any, Dict, List, Optional, Tuple
 import streamlit as st
 
 from services.audit_engine import audit_lease_invoice
+from services.auth import get_supabase_client, require_current_user_id
+from services.demo import is_demo_mode
+from services.extraction import get_sample_invoice_data, get_sample_lease_data
 from services.recovery_engine import build_recovery_summary
 from services.risk_engine import calculate_risk_score
 from services.supabase_persistence import save_audit_result
-from services.auth import get_supabase_client, require_current_user_id
-from services.validation import validate_lease_data, validate_invoice_data, validate_audit_ready, extract_summary
-from services.extraction import get_sample_lease_data, get_sample_invoice_data
-from services.demo import is_demo_mode
+from services.validation import extract_summary, validate_audit_ready, validate_invoice_data, validate_lease_data
 from ui.custom_theme import COLORS, get_color
+from utils.ui import (
+    format_currency,
+    render_alert,
+    render_divider,
+    render_empty_state,
+    render_finding_card,
+    render_kpi_card,
+    render_page_header,
+    render_section_header,
+    render_status_badge,
+    render_stepper,
+)
 
 
-def _get_properties() -> list[Dict[str, Any]]:
+def _get_properties() -> List[Dict[str, Any]]:
     """Fetch user's properties."""
     user_id = require_current_user_id()
     client = get_supabase_client()
@@ -28,7 +39,7 @@ def _get_properties() -> list[Dict[str, Any]]:
     return response.data or []
 
 
-def _get_property_documents(prop_id: str, doc_type: str) -> list[Dict[str, Any]]:
+def _get_property_documents(prop_id: str, doc_type: str) -> List[Dict[str, Any]]:
     """Fetch documents of a specific type for a property."""
     client = get_supabase_client()
     response = (
@@ -42,7 +53,7 @@ def _get_property_documents(prop_id: str, doc_type: str) -> list[Dict[str, Any]]
     return response.data or []
 
 
-def _get_property_audits(prop_id: str) -> list[Dict[str, Any]]:
+def _get_property_audits(prop_id: str) -> List[Dict[str, Any]]:
     """Fetch audits for a property."""
     client = get_supabase_client()
     response = (
@@ -56,25 +67,18 @@ def _get_property_audits(prop_id: str) -> list[Dict[str, Any]]:
 
 
 def _load_extracted_data_from_documents(
-    lease_docs: list[Dict[str, Any]], invoice_docs: list[Dict[str, Any]]
+    lease_docs: List[Dict[str, Any]], invoice_docs: List[Dict[str, Any]]
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
-    """
-    Attempt to load extracted data from uploaded documents.
-
-    Returns:
-        Tuple of (lease_data, invoice_data), each can be None if not found
-    """
+    """Attempt to load extracted structured data from uploaded documents."""
     lease_data = None
     invoice_data = None
 
-    # Try to get lease data from latest lease document
     if lease_docs:
         latest_lease = lease_docs[0]
         doc_meta = latest_lease.get("metadata", {})
         if doc_meta.get("extracted_data"):
             lease_data = doc_meta.get("extracted_data")
 
-    # Try to get invoice data from latest invoice document
     if invoice_docs:
         latest_invoice = invoice_docs[0]
         doc_meta = latest_invoice.get("metadata", {})
@@ -85,86 +89,93 @@ def _load_extracted_data_from_documents(
 
 
 def render():
-    """Render the audits page."""
-    st.markdown("## 🔎 Audits")
+    """Render the deterministic audit execution engine and history."""
+    render_page_header(
+        title="Lease Audit Sessions",
+        subtitle="Reconcile contractual lease provisions against landlord invoice charges with mathematical certainty.",
+        icon="🔎",
+    )
 
-    if is_demo_mode():
-        st.info("🎭 **DEMO MODE** — Using sample data for demonstration")
+    tab_run, tab_history = st.tabs(["Execute Audit Session", "Audit Log & History"])
 
-    tab1, tab2 = st.tabs(["Run Audit", "Audit History"])
-
-    with tab1:
-        st.markdown("### Create New Audit")
-
+    # -----------------------------------------------------------------------
+    # TAB 1: RUN AUDIT SESSION
+    # -----------------------------------------------------------------------
+    with tab_run:
         properties = _get_properties()
 
         if not properties:
-            st.info("No properties yet. Create a property first.")
+            render_empty_state(
+                title="No Properties Available",
+                description="Register a commercial property first to begin conducting lease reconciliation audits.",
+                icon="🏢",
+            )
             return
 
-        prop_dict = {p["id"]: p["name"] for p in properties}
+        # Visual Stepper
+        render_stepper(["Select Property", "Contract Terms", "Invoice Charges", "Deterministic Reconciliation"], 0)
 
-        # Property selection
+        prop_dict = {p["id"]: p["name"] for p in properties}
         selected_prop_id = st.selectbox(
-            "Select Property",
+            "Target Commercial Property*",
             options=[p["id"] for p in properties],
             format_func=lambda x: prop_dict.get(x, "Unknown"),
-            key="audit_prop_select"
+            key="audit_target_prop",
         )
 
         if selected_prop_id:
-            # Load documents
+            prop_name = prop_dict[selected_prop_id]
             lease_docs = _get_property_documents(selected_prop_id, "Lease")
             invoice_docs = _get_property_documents(selected_prop_id, "Invoice")
-
-            # Try to load extracted data from documents
             extracted_lease, extracted_invoice = _load_extracted_data_from_documents(lease_docs, invoice_docs)
 
-            # ================================================================
-            # Lease Data Section
-            # ================================================================
-            st.markdown("### Lease Data")
+            # ---------------------------------------------------------------
+            # 1. Lease Terms Section
+            # ---------------------------------------------------------------
+            render_section_header("01. Contractual Lease Terms", f"Provisions and expense caps governing {prop_name}")
 
-            if lease_docs:
-                st.write(f"✓ {len(lease_docs)} lease document(s) available")
-                if extracted_lease:
-                    st.success(f"✓ Data extracted from: **{lease_docs[0].get('file_name')}**")
-            else:
-                st.info("No lease documents uploaded yet. Upload a lease document or enter data manually.")
-
-            with st.expander("Edit Lease Terms", expanded=(not extracted_lease)):
-                st.markdown("Fill in lease terms below:")
-
-                base_rent = st.number_input(
-                    "Base Rent (annual, $)",
-                    min_value=0.0,
-                    value=float(extracted_lease.get("base_rent", 120000) if extracted_lease else 120000),
-                    help="Annual base rent amount"
+            if extracted_lease and lease_docs:
+                st.markdown(
+                    f"<div style='color:#15803D; font-size:0.875rem; font-weight:600; margin-bottom:0.5rem;'>✓ Pre-filled from extracted document: {lease_docs[0].get('file_name')}</div>",
+                    unsafe_allow_html=True,
                 )
 
-                cam_cap_pct = st.number_input(
-                    "CAM Cap (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=float((extracted_lease.get("cam_cap_pct", 0.05) * 100) if extracted_lease else 5.0),
-                    help="Maximum CAM increase as percentage of base rent"
-                ) / 100
+            with st.expander("Review & Confirm Lease Terms", expanded=True):
+                col_l1, col_l2 = st.columns(2)
+                with col_l1:
+                    base_rent = st.number_input(
+                        "Annual Base Rent ($)*",
+                        min_value=0.0,
+                        value=float(extracted_lease.get("base_rent", 120000) if extracted_lease else 120000),
+                        step=1000.0,
+                        help="Contractual annual base rent",
+                    )
+                    cam_cap_pct = st.number_input(
+                        "CAM Expense Cap (%)*",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=float((extracted_lease.get("cam_cap_pct", 0.05) * 100) if extracted_lease else 5.0),
+                        step=0.5,
+                        help="Maximum allowable annual CAM increase as percentage",
+                    ) / 100.0
 
-                tenant_share = st.number_input(
-                    "Tenant Share (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=float((extracted_lease.get("tenant_share_pct", 0.25) * 100) if extracted_lease else 25.0),
-                    help="Tenant's share of operating expenses"
-                ) / 100
-
-                annual_increase = st.number_input(
-                    "Annual Rent Increase (%)",
-                    min_value=0.0,
-                    max_value=20.0,
-                    value=float((extracted_lease.get("annual_increase_pct", 0.03) * 100) if extracted_lease else 3.0),
-                    help="Annual rent escalation percentage"
-                ) / 100
+                with col_l2:
+                    tenant_share = st.number_input(
+                        "Tenant Pro-Rata Share (%)*",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=float((extracted_lease.get("tenant_share_pct", 0.25) * 100) if extracted_lease else 25.0),
+                        step=0.5,
+                        help="Tenant's pro-rata percentage share of building expenses",
+                    ) / 100.0
+                    annual_increase = st.number_input(
+                        "Annual Rent Escalation (%)",
+                        min_value=0.0,
+                        max_value=25.0,
+                        value=float((extracted_lease.get("annual_increase_pct", 0.03) * 100) if extracted_lease else 3.0),
+                        step=0.5,
+                        help="Contractual annual base rent escalation rate",
+                    ) / 100.0
 
                 lease_data = {
                     "base_rent": base_rent,
@@ -175,55 +186,46 @@ def render():
                     "excluded_expenses": ["management_fee"],
                 }
 
-            # Validate lease data
-            lease_valid, lease_errors = validate_lease_data(lease_data)
-            if not lease_valid:
-                with st.expander("⚠ Lease Validation Issues"):
-                    for error in lease_errors:
-                        st.write(f"• {error}")
+            # ---------------------------------------------------------------
+            # 2. Invoice Charges Section
+            # ---------------------------------------------------------------
+            render_section_header("02. Landlord Invoice & Operating Charges", f"Statement amounts billed for reconciliation")
 
-            # ================================================================
-            # Invoice Data Section
-            # ================================================================
-            st.markdown("### Invoice Data")
-
-            if invoice_docs:
-                st.write(f"✓ {len(invoice_docs)} invoice document(s) available")
-                if extracted_invoice:
-                    st.success(f"✓ Data extracted from: **{invoice_docs[0].get('file_name')}**")
-            else:
-                st.info("No invoice documents uploaded yet. Upload an invoice document or enter data manually.")
-
-            with st.expander("Edit Invoice Items", expanded=(not extracted_invoice)):
-                st.markdown("Fill in invoice details below:")
-
-                cam_expense = st.number_input(
-                    "CAM Charge ($)",
-                    min_value=0.0,
-                    value=float(extracted_invoice.get("cam_expense", 1500) if extracted_invoice else 1500),
-                    help="Common Area Maintenance charge on invoice"
+            if extracted_invoice and invoice_docs:
+                st.markdown(
+                    f"<div style='color:#15803D; font-size:0.875rem; font-weight:600; margin-bottom:0.5rem;'>✓ Pre-filled from statement: {invoice_docs[0].get('file_name')}</div>",
+                    unsafe_allow_html=True,
                 )
 
-                rent_amount = st.number_input(
-                    "Rent Amount ($)",
-                    min_value=0.0,
-                    value=float(extracted_invoice.get("rent_amount", 10000) if extracted_invoice else 10000),
-                    help="Rent portion of the invoice"
-                )
+            with st.expander("Review & Confirm Invoice Line Items", expanded=True):
+                col_i1, col_i2 = st.columns(2)
+                with col_i1:
+                    rent_amount = st.number_input(
+                        "Billed Base Rent ($)*",
+                        min_value=0.0,
+                        value=float(extracted_invoice.get("rent_amount", 10000) if extracted_invoice else 10000),
+                        step=500.0,
+                    )
+                    cam_expense = st.number_input(
+                        "Billed Common Area Maintenance (CAM) ($)*",
+                        min_value=0.0,
+                        value=float(extracted_invoice.get("cam_expense", 1500) if extracted_invoice else 1500),
+                        step=100.0,
+                    )
 
-                admin_fee = st.number_input(
-                    "Administrative Fee ($)",
-                    min_value=0.0,
-                    value=float(extracted_invoice.get("admin_fee_amount", 500) if extracted_invoice else 500),
-                    help="Administrative or management fee on invoice"
-                )
-
-                tax_amount = st.number_input(
-                    "Tax Amount ($)",
-                    min_value=0.0,
-                    value=float(extracted_invoice.get("tax_amount", 0) if extracted_invoice else 0),
-                    help="Tax or other charges on invoice"
-                )
+                with col_i2:
+                    admin_fee = st.number_input(
+                        "Billed Administrative / Management Fee ($)",
+                        min_value=0.0,
+                        value=float(extracted_invoice.get("admin_fee_amount", 500) if extracted_invoice else 500),
+                        step=50.0,
+                    )
+                    tax_amount = st.number_input(
+                        "Billed Real Estate Taxes ($)",
+                        min_value=0.0,
+                        value=float(extracted_invoice.get("tax_amount", 0) if extracted_invoice else 0),
+                        step=50.0,
+                    )
 
                 invoice_data = {
                     "cam_expense": cam_expense,
@@ -234,149 +236,159 @@ def render():
                     "total_amount": rent_amount + cam_expense + admin_fee + tax_amount,
                 }
 
-            # Validate invoice data
-            invoice_valid, invoice_errors = validate_invoice_data(invoice_data)
-            if not invoice_valid:
-                with st.expander("⚠ Invoice Validation Issues"):
-                    for error in invoice_errors:
-                        st.write(f"• {error}")
+            # ---------------------------------------------------------------
+            # 3. Validation & Execution
+            # ---------------------------------------------------------------
+            render_divider("1.5rem")
+            is_ready, validation_errors = validate_audit_ready(lease_data, invoice_data)
 
-            # ================================================================
-            # Overall Validation & Audit Execution
-            # ================================================================
-            st.markdown("### Validation & Audit")
+            if is_ready:
+                col_btn, col_info = st.columns([1.5, 3])
+                with col_btn:
+                    run_clicked = st.button("▶ Run Deterministic Audit", type="primary", use_container_width=True)
+                with col_info:
+                    st.markdown(
+                        "<div style='font-size:0.8125rem; color:#64748B; padding-top:0.4rem;'>Executes CAM cap checks, exclusion enforcement, escalation rules, and pro-rata share reconciliation.</div>",
+                        unsafe_allow_html=True,
+                    )
 
-            is_audit_ready, all_errors = validate_audit_ready(lease_data, invoice_data)
+                if run_clicked:
+                    with st.status("Executing Deterministic Lease Audit...", expanded=True) as status_box:
+                        st.write("1. Reading contractual lease provisions & exclusion clauses...")
+                        findings = audit_lease_invoice(lease_data, invoice_data)
 
-            if is_audit_ready:
-                st.success("✅ All data is valid and ready for audit")
+                        st.write("2. Reconciling billed line items against contractual caps...")
+                        category_scores = {
+                            "cam_risk": 50 if any(f.get("category") == "CAM cap" for f in findings) else 10,
+                            "rent_escalation_risk": 40 if any(f.get("category") == "Rent escalation" for f in findings) else 5,
+                            "administrative_fee_risk": 30 if any(f.get("category") == "Administrative fee" for f in findings) else 5,
+                            "tax_risk": 20,
+                            "audit_rights_risk": 25,
+                        }
 
-                # Run audit button
-                if st.button("▶ Run Deterministic Audit", type="primary"):
-                    with st.spinner("Running deterministic lease audit..."):
-                        try:
-                            # Run audit engine
-                            findings = audit_lease_invoice(lease_data, invoice_data)
+                        st.write("3. Calculating risk score exposure & recovery potentials...")
+                        risk = calculate_risk_score(category_scores)
+                        recovery = build_recovery_summary(findings)
 
-                            # Calculate risk
-                            category_scores = {
-                                "cam_risk": 50 if any(f["category"] == "CAM cap" for f in findings) else 10,
-                                "rent_escalation_risk": 40 if any(f["category"] == "Rent escalation" for f in findings) else 5,
-                                "administrative_fee_risk": 30 if any(f["category"] == "Administrative fee" for f in findings) else 5,
-                                "tax_risk": 20,
-                                "audit_rights_risk": 25,
-                            }
-                            risk = calculate_risk_score(category_scores)
+                        st.write("4. Persisting audit findings & recovery pipeline records...")
+                        save_audit_result(
+                            property_id=selected_prop_id,
+                            audit_type="Deterministic Lease Audit",
+                            total_invoice_amount=invoice_data.get("total_amount", 0),
+                            findings=findings,
+                            overall_score=risk["overall_score"],
+                            risk_level=risk["risk_level"],
+                            recovery_summary=recovery,
+                            notes="Automated deterministic audit with contractual evidence",
+                        )
+                        status_box.update(label="✓ Audit Complete — Discrepancies Calculated", state="complete")
 
-                            # Build recovery
-                            recovery = build_recovery_summary(findings)
+                    # -------------------------------------------------------
+                    # Audit Results Display
+                    # -------------------------------------------------------
+                    render_section_header("Audit Results & Summary", f"Reconciliation summary for {prop_name}")
 
-                            # Save to Supabase
-                            result = save_audit_result(
-                                property_id=selected_prop_id,
-                                audit_type="Deterministic Lease Audit",
-                                total_invoice_amount=invoice_data.get("total_amount", 0),
-                                findings=findings,
-                                overall_score=risk["overall_score"],
-                                risk_level=risk["risk_level"],
-                                recovery_summary=recovery,
-                                notes="Automated deterministic audit via extraction and validation"
+                    r_col1, r_col2, r_col3 = st.columns(3)
+                    with r_col1:
+                        render_kpi_card(
+                            label="Total Discrepancies",
+                            value=str(len(findings)),
+                            context="Flagged lease issues",
+                            icon="🔍",
+                            accent_color=get_color("brand_blue"),
+                        )
+                    with r_col2:
+                        risk_score = risk["overall_score"]
+                        risk_accent = (
+                            get_color("risk_critical") if risk_score >= 70
+                            else get_color("risk_high") if risk_score >= 50
+                            else get_color("risk_moderate") if risk_score >= 30
+                            else get_color("risk_low")
+                        )
+                        render_kpi_card(
+                            label="Calculated Risk Score",
+                            value=f"{risk_score:.0f} / 100",
+                            context=f"● {risk['risk_level'].upper()}",
+                            icon="📊",
+                            accent_color=risk_accent,
+                        )
+                    with r_col3:
+                        render_kpi_card(
+                            label="Potential Recovery",
+                            value=format_currency(recovery["potential_recovery"]),
+                            context="Contract overcharges",
+                            icon="💰",
+                            accent_color=get_color("success"),
+                        )
+
+                    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+                    render_section_header("Discrepancy Breakdown", "Individual findings with financial comparison and contract evidence")
+
+                    if findings:
+                        for finding in findings:
+                            billed_amt = float(finding.get("billed_amount") or finding.get("amount") or 0.0)
+                            allowed_amt = float(finding.get("allowed_amount") or 0.0)
+                            potential_rec = float(finding.get("potential_recovery") or finding.get("amount") or 0.0)
+                            evidence_text = finding.get("lease_evidence", {}).get("clause", "") or finding.get("explanation", "")
+
+                            render_finding_card(
+                                category=finding.get("category", "Finding"),
+                                title=finding.get("title", finding.get("category", "Discrepancy")),
+                                description=finding.get("explanation", ""),
+                                severity=finding.get("severity", "Medium"),
+                                billed=billed_amt,
+                                allowed=allowed_amt,
+                                recovery=potential_rec,
+                                evidence=evidence_text,
+                                property_name=prop_name,
                             )
-
-                            st.success(f"✅ Audit completed! Found {len(findings)} findings.")
-
-                            # Display results
-                            st.markdown("---")
-                            st.markdown("### Audit Results")
-
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Findings", len(findings))
-                            with col2:
-                                st.metric("Risk Score", f"{risk['overall_score']}/100", f"{risk['risk_level']}")
-                            with col3:
-                                st.metric("Recovery Potential", f"${recovery['potential_recovery']:,.2f}")
-
-                            # Findings detail by severity
-                            st.markdown("### Findings Detail")
-
-                            for finding in findings:
-                                with st.container(border=True):
-                                    col_cat, col_sev, col_amt = st.columns([2, 1, 1])
-
-                                    with col_cat:
-                                        st.write(f"**{finding['category']}**")
-                                    with col_sev:
-                                        st.write(f"🔴 {finding['severity']}" if finding["severity"] == "Critical"
-                                                 else f"🟠 {finding['severity']}" if finding["severity"] == "High"
-                                                 else f"🟡 {finding['severity']}" if finding["severity"] == "Medium"
-                                                 else f"🟢 {finding['severity']}")
-                                    with col_amt:
-                                        st.write(f"${finding['potential_recovery']:,.2f}")
-
-                                    st.write(finding['explanation'])
-
-                                    # Show evidence in expander
-                                    with st.expander("View Evidence"):
-                                        if finding.get("lease_evidence"):
-                                            st.write("**Lease Evidence:**")
-                                            st.json(finding["lease_evidence"])
-                                        if finding.get("invoice_evidence"):
-                                            st.write("**Invoice Evidence:**")
-                                            st.json(finding["invoice_evidence"])
-
-                        except Exception as e:
-                            st.error(f"❌ Audit failed: {str(e)}")
-                            st.info("Check your database connection and ensure Supabase is properly configured.")
+                    else:
+                        render_empty_state("Zero Discrepancies Detected", "All invoice charges strictly adhered to lease caps and allowances.", "✅")
 
             else:
-                st.error("❌ Cannot run audit - data validation issues found:")
-                for error in all_errors:
-                    st.write(f"• {error}")
+                render_alert("Please resolve the following input issues before running the audit:", kind="error", title="Validation Blocked")
+                for err in validation_errors:
+                    st.write(f"• {err}")
 
-    with tab2:
-        st.markdown("### Audit History")
+    # -----------------------------------------------------------------------
+    # TAB 2: AUDIT HISTORY
+    # -----------------------------------------------------------------------
+    with tab_history:
+        render_section_header("Audit Session Archive", "Historical audit records and full execution traces")
 
-        properties = _get_properties()
-        prop_dict = {p["id"]: p["name"] for p in properties}
-
-        if not properties:
-            st.info("No properties yet")
-            return
-
-        # Select property
-        selected_prop_id = st.selectbox(
-            "Select Property",
+        prop_dict_hist = {p["id"]: p["name"] for p in properties}
+        selected_hist_prop_id = st.selectbox(
+            "Filter by Property",
             options=[p["id"] for p in properties],
-            format_func=lambda x: prop_dict.get(x, "Unknown"),
-            key="history_prop_select"
+            format_func=lambda x: prop_dict_hist.get(x, "Unknown"),
+            key="hist_prop_select",
         )
 
-        if selected_prop_id:
-            audits = _get_property_audits(selected_prop_id)
+        if selected_hist_prop_id:
+            audits = _get_property_audits(selected_hist_prop_id)
 
             if audits:
-                st.markdown(f"**{len(audits)} audit(s)**")
+                st.markdown(f"**{len(audits)} recorded audit session(s)**")
 
                 for audit in audits:
                     with st.container(border=True):
-                        col1, col2, col3 = st.columns([2, 1, 1])
-
-                        with col1:
-                            st.write(f"**{audit.get('audit_type', 'Audit')}**")
-                            st.caption(f"{audit.get('created_at', 'N/A')[:10]}")
-
-                        with col2:
-                            st.write(f"Status: **{audit.get('status', 'unknown')}**")
-
-                        with col3:
-                            st.write(f"**${float(audit.get('total_invoice_amount', 0)):,.0f}**")
-
-                        # Show notes if available
-                        if audit.get("notes"):
-                            st.caption(f"Notes: {audit['notes']}")
-
-                        if st.button("View Full Details", key=f"audit_{audit['id']}"):
-                            st.json(audit)
+                        c1, c2, c3, c4 = st.columns([2, 1, 1, 0.8])
+                        with c1:
+                            st.markdown(f"**{audit.get('audit_type', 'Audit Session')}**")
+                            st.caption(f"Session date: {audit.get('created_at', '')[:10]}")
+                        with c2:
+                            st.markdown(
+                                f"<span style='font-size:0.75rem; color:#667085; text-transform:uppercase; font-weight:700;'>Status</span><br>{render_status_badge(audit.get('status', 'resolved'))}",
+                                unsafe_allow_html=True,
+                            )
+                        with c3:
+                            st.markdown(
+                                f"<span style='font-size:0.75rem; color:#667085; text-transform:uppercase; font-weight:700;'>Invoice Total</span><br><strong>{format_currency(audit.get('total_invoice_amount', 0))}</strong>",
+                                unsafe_allow_html=True,
+                            )
+                        with c4:
+                            st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+                            with st.expander("Inspect"):
+                                st.json(audit)
             else:
-                st.info("No audits for this property yet")
+                render_empty_state("No Previous Audits", f"No historical audits found for {prop_dict_hist.get(selected_hist_prop_id)}.", "📁")

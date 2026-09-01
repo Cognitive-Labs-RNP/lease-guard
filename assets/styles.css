@@ -1,0 +1,1004 @@
+/* ==========================================================================
+   LeaseGuard AI — Enterprise Design System Stylesheet
+   Theme: Light Workspace (#F5F7FB) + Dark Navy Navigation (#0F172A)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. CSS Custom Properties / Design Tokens
+   -------------------------------------------------------------------------- */
+:root {
+    /* Workspace surfaces */
+    --bg-workspace:       #F5F7FB;
+    --bg-card:            #FFFFFF;
+    --bg-card-subtle:     #F8FAFC;
+    --bg-sidebar:         #0F172A;
+    --bg-sidebar-hover:   #1E293B;
+    --bg-sidebar-active:  #1D4ED8;
+    --bg-input:           #FFFFFF;
+
+    /* Typography */
+    --font-sans:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono:          'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+    /* Text Colors */
+    --text-primary:       #172033;
+    --text-secondary:     #667085;
+    --text-muted:         #94A3B8;
+    --text-inverse:       #F8FAFC;
+    --text-sidebar:       #CBD5E1;
+    --text-sidebar-dim:   #64748B;
+
+    /* Brand & Primary Actions */
+    --brand-navy:         #0F172A;
+    --brand-blue:         #1D4ED8;
+    --brand-blue-hover:   #1E40AF;
+    --brand-blue-subtle:  #EFF6FF;
+    --brand-teal:         #0891B2;
+    --brand-teal-hover:   #0E7490;
+    --brand-teal-subtle:  #F0FDFA;
+
+    /* Semantic Status Colors */
+    --success:            #16A34A;
+    --success-bg:         #F0FDF4;
+    --success-border:     #BBF7D0;
+    --success-text:       #15803D;
+
+    --warning:            #D97706;
+    --warning-bg:         #FFFBEB;
+    --warning-border:     #FDE68A;
+    --warning-text:       #92400E;
+
+    --danger:             #DC2626;
+    --danger-bg:          #FEF2F2;
+    --danger-border:      #FECACA;
+    --danger-text:        #B91C1C;
+
+    --info:               #0284C7;
+    --info-bg:            #F0F9FF;
+    --info-border:        #BAE6FD;
+    --info-text:          #0369A1;
+
+    /* Risk Semantic Palette */
+    --risk-critical:      #DC2626;
+    --risk-high:          #EA580C;
+    --risk-moderate:      #D97706;
+    --risk-low:           #16A34A;
+
+    /* Borders & Shadows */
+    --border:             #E2E8F0;
+    --border-strong:      #CBD5E1;
+    --border-subtle:      #F1F5F9;
+
+    --shadow-xs:          0 1px 2px 0 rgba(15, 23, 42, 0.04);
+    --shadow-sm:          0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    --shadow-md:          0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --shadow-lg:          0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+    --shadow-card:        0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+
+    /* Radii */
+    --radius-xs:          4px;
+    --radius-sm:          6px;
+    --radius-md:          10px;
+    --radius-lg:          14px;
+    --radius-xl:          20px;
+    --radius-pill:        9999px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Base Document & Streamlit Shell Overrides
+   -------------------------------------------------------------------------- */
+html, body, [data-testid="stAppViewContainer"],
+[data-testid="stApp"], .main {
+    background-color: var(--bg-workspace) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-sans) !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Hide Streamlit Chrome / Menus / Footer */
+#MainMenu, footer, header {
+    visibility: hidden !important;
+    height: 0 !important;
+}
+
+.block-container {
+    padding-top: 1.75rem !important;
+    padding-bottom: 3.5rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 1360px !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Dark Navy Sidebar (#0F172A)
+   -------------------------------------------------------------------------- */
+[data-testid="stSidebar"] {
+    background-color: var(--bg-sidebar) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-testid="stSidebar"] * {
+    font-family: var(--font-sans) !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stMarkdown span {
+    color: var(--text-sidebar) !important;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    margin: 0.75rem 0 !important;
+}
+
+/* Navigation Section Labels */
+.nav-section-label {
+    font-size: 0.625rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    color: var(--text-sidebar-dim) !important;
+    padding: 0.875rem 0.5rem 0.25rem 0.5rem !important;
+    display: block !important;
+}
+
+/* Sidebar Action Buttons */
+[data-testid="stSidebar"] .stButton > button {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-sidebar) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    padding: 0.4rem 0.75rem !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    transition: all 0.15s ease !important;
+}
+
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: var(--bg-sidebar-hover) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: translateX(2px);
+}
+
+/* Active Nav Item Highlighting */
+.sidebar-active-btn button,
+[data-testid="stSidebar"] .stButton > button.active-nav-btn {
+    background-color: var(--bg-sidebar-active) !important;
+    color: #FFFFFF !important;
+    border-color: var(--brand-blue) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 4px rgba(29, 78, 216, 0.4) !important;
+}
+
+/* Sidebar User Footer Badge */
+.sidebar-user-card {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-avatar {
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1D4ED8 0%, #0891B2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.sidebar-user-email {
+    font-size: 0.8125rem;
+    color: #E2E8F0;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 155px;
+}
+
+.sidebar-user-role {
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   4. Typography & Headings
+   -------------------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+    font-family: var(--font-sans) !important;
+    letter-spacing: -0.025em !important;
+    font-weight: 700 !important;
+}
+
+p, li, span, label, div {
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+/* Page Header Block */
+.page-header {
+    padding: 0 0 1.25rem 0;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.page-header-icon-badge {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border: 1px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-xs);
+}
+
+.page-header-title {
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
+.page-header-subtitle {
+    font-size: 0.9375rem !important;
+    color: var(--text-secondary) !important;
+    margin: 0.2rem 0 0 0 !important;
+    font-weight: 400 !important;
+}
+
+/* Section Header */
+.section-header-block {
+    margin: 1.75rem 0 0.875rem 0;
+}
+
+.section-header-title {
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.02em !important;
+    margin: 0 0 0.25rem 0 !important;
+}
+
+.section-desc {
+    font-size: 0.875rem !important;
+    color: var(--text-secondary) !important;
+    margin: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Authentication Screen (Isolated & Centered)
+   -------------------------------------------------------------------------- */
+.auth-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 82vh;
+    padding: 1.5rem 1rem;
+}
+
+.auth-brand {
+    text-align: center;
+    margin-bottom: 1.75rem;
+}
+
+.auth-brand-shield {
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: 0 auto 0.75rem auto;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.auth-brand-name {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.035em;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.auth-brand-tagline {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    margin-top: 0.375rem;
+    font-weight: 500;
+}
+
+.auth-card-container {
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+    padding: 2.25rem 2.5rem;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.auth-card-header {
+    margin-bottom: 1.25rem;
+}
+
+.auth-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.02em;
+}
+
+.auth-card-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   6. Form Inputs & Interactive Controls
+   -------------------------------------------------------------------------- */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stNumberInput > div > div > input,
+.stDateInput > div > div > input {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.9375rem !important;
+    padding: 0.55rem 0.85rem !important;
+    box-shadow: var(--shadow-xs);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: var(--brand-blue) !important;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12) !important;
+    outline: none !important;
+}
+
+.stSelectbox > div > div,
+.stMultiSelect > div > div {
+    background-color: var(--bg-input) !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-xs);
+}
+
+.stTextInput label, .stSelectbox label, .stTextArea label,
+.stNumberInput label, .stDateInput label, .stFileUploader label,
+.stMultiSelect label, .stRadio label, .stCheckbox label,
+.stSlider label {
+    color: var(--text-primary) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 4px !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Modern File Uploader Dropzone */
+[data-testid="stFileUploader"] {
+    background-color: #FFFFFF !important;
+    border: 2px dashed var(--border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 1.25rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: var(--shadow-xs);
+}
+
+[data-testid="stFileUploader"]:hover {
+    border-color: var(--brand-blue) !important;
+    background-color: var(--brand-blue-subtle) !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Buttons Hierarchy
+   -------------------------------------------------------------------------- */
+/* Primary Buttons */
+.stButton > button[kind="primary"],
+.stButton > button[data-testid*="primary"],
+.stFormSubmitButton > button[kind="primary"] {
+    background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border: 1px solid #1D4ED8 !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    font-size: 0.9375rem !important;
+    padding: 0.55rem 1.35rem !important;
+    box-shadow: 0 1px 3px rgba(29, 78, 216, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    transition: all 0.15s ease !important;
+}
+
+.stButton > button[kind="primary"]:hover,
+.stFormSubmitButton > button[kind="primary"]:hover {
+    background: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35) !important;
+    transform: translateY(-1px);
+}
+
+/* Secondary Buttons */
+.stButton > button:not([kind="primary"]),
+.stFormSubmitButton > button:not([kind="primary"]) {
+    background-color: #FFFFFF !important;
+    color: var(--text-primary) !important;
+    border: 1.5px solid var(--border-strong) !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+    font-size: 0.9375rem !important;
+    padding: 0.55rem 1.15rem !important;
+    box-shadow: var(--shadow-xs);
+    transition: all 0.15s ease !important;
+}
+
+.stButton > button:not([kind="primary"]):hover {
+    background-color: #F8FAFC !important;
+    border-color: var(--brand-blue) !important;
+    color: var(--brand-blue) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. KPI & Metric Cards
+   -------------------------------------------------------------------------- */
+.kpi-card {
+    background-color: #FFFFFF;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--brand-blue);
+    border-radius: var(--radius-md);
+    padding: 1.125rem 1.25rem;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.375rem;
+}
+
+.kpi-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.kpi-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    opacity: 0.85;
+}
+
+.kpi-value {
+    font-size: 1.625rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+    margin: 0.125rem 0 0.375rem 0;
+}
+
+.kpi-context {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Native Streamlit Metric Overrides */
+[data-testid="stMetric"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 1.125rem 1.25rem !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--text-secondary) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--text-primary) !important;
+    font-size: 1.625rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. Status Badges System
+   -------------------------------------------------------------------------- */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.225rem 0.7rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.badge-low          { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+.badge-moderate     { background: #FEF9C3; color: #854D0E; border: 1px solid #FDE68A; }
+.badge-warning      { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+.badge-high         { background: #FFEDD5; color: #C2410C; border: 1px solid #FDBA74; }
+.badge-critical     { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+.badge-detected     { background: #DBEAFE; color: #1D4ED8; border: 1px solid #BFDBFE; }
+.badge-disputed     { background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; }
+.badge-review       { background: #EDE9FE; color: #6D28D9; border: 1px solid #DDD6FE; }
+.badge-recovered    { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+.badge-rejected     { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+.badge-open         { background: #F0F9FF; color: #0369A1; border: 1px solid #BAE6FD; }
+.badge-resolved     { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+.badge-closed       { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+.badge-success      { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+.badge-neutral      { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
+
+/* --------------------------------------------------------------------------
+   10. Financial Finding Cards
+   -------------------------------------------------------------------------- */
+.finding-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.finding-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.finding-card.finding-critical { border-left-color: var(--risk-critical); }
+.finding-card.finding-high     { border-left-color: var(--risk-high); }
+.finding-card.finding-medium   { border-left-color: var(--risk-moderate); }
+.finding-card.finding-low      { border-left-color: var(--risk-low); }
+
+.finding-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.625rem;
+    gap: 1rem;
+}
+
+.finding-category-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 0.5rem;
+}
+
+.finding-property {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.finding-title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.375rem;
+    letter-spacing: -0.015em;
+}
+
+.finding-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 0.875rem;
+}
+
+.finding-amounts-grid {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.75rem 1.125rem;
+    background: #F8FAFC;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.875rem;
+    flex-wrap: wrap;
+}
+
+.finding-amount-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.finding-amount-col.recovery-col {
+    margin-left: auto;
+}
+
+.finding-amount-lbl {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.finding-amount-val {
+    font-size: 1.0625rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.finding-amount-val.recovery-val {
+    color: var(--success-text);
+}
+
+.finding-evidence-box {
+    background: #F0F9FF;
+    border-left: 3px solid var(--brand-teal);
+    padding: 0.625rem 0.875rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.875rem;
+    color: #0C4A6E;
+    line-height: 1.55;
+    font-style: italic;
+}
+
+/* --------------------------------------------------------------------------
+   11. Visual Steppers & Pipeline Stages
+   -------------------------------------------------------------------------- */
+.stepper-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1.25rem 0 1.75rem 0;
+    padding: 1rem 1.25rem;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+}
+
+.stepper-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex: 1;
+    position: relative;
+}
+
+.stepper-circle {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #F1F5F9;
+    border: 2px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.stepper-item.active .stepper-circle {
+    background: var(--brand-blue);
+    border-color: var(--brand-blue);
+    color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+}
+
+.stepper-item.done .stepper-circle {
+    background: var(--success);
+    border-color: var(--success);
+    color: #FFFFFF;
+}
+
+.stepper-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.stepper-step-num {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+}
+
+.stepper-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.stepper-item.active .stepper-title {
+    color: var(--brand-blue);
+    font-weight: 700;
+}
+
+/* Recovery Pipeline Bar */
+.pipeline-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.pipeline-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.125rem;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.15s ease;
+}
+
+.pipeline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.pipeline-card-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.pipeline-card-value {
+    font-size: 1.375rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   12. Empty States & Alerts
+   -------------------------------------------------------------------------- */
+.empty-state-box {
+    text-align: center;
+    padding: 3.5rem 2rem;
+    background: #FFFFFF;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    margin: 1.25rem 0;
+    box-shadow: var(--shadow-xs);
+}
+
+.empty-state-icon {
+    font-size: 2.75rem;
+    margin-bottom: 0.875rem;
+    display: block;
+    opacity: 0.6;
+}
+
+.empty-state-title {
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 0.375rem 0 !important;
+}
+
+.empty-state-desc {
+    font-size: 0.875rem !important;
+    color: var(--text-secondary) !important;
+    max-width: 400px;
+    margin: 0 auto !important;
+    line-height: 1.6 !important;
+}
+
+.alert-box {
+    padding: 0.875rem 1.125rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    margin: 0.625rem 0;
+    border: 1px solid transparent;
+}
+
+.alert-info    { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+.alert-success { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+.alert-warning { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning-text); }
+.alert-error   { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-text); }
+
+/* --------------------------------------------------------------------------
+   13. Tables, Expanders, Tabs & Containers
+   -------------------------------------------------------------------------- */
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: transparent !important;
+    border-bottom: 2px solid var(--border) !important;
+    gap: 0.5rem !important;
+    padding-bottom: 0 !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background-color: transparent !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 0.9375rem !important;
+    padding: 0.65rem 1.25rem !important;
+    border-bottom: 2px solid transparent !important;
+    margin-bottom: -2px !important;
+    transition: color 0.15s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    color: var(--text-primary) !important;
+}
+
+.stTabs [aria-selected="true"] {
+    color: var(--brand-blue) !important;
+    border-bottom-color: var(--brand-blue) !important;
+    font-weight: 700 !important;
+}
+
+.stTabs [data-baseweb="tab-panel"] {
+    padding-top: 1.25rem !important;
+    background-color: transparent !important;
+}
+
+/* Expanders */
+.streamlit-expanderHeader,
+[data-testid="stExpander"] > div:first-child {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stExpander"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-card) !important;
+    overflow: hidden !important;
+    margin-bottom: 0.75rem !important;
+}
+
+/* Bordered Containers */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-card) !important;
+    padding: 1.25rem !important;
+    margin-bottom: 0.75rem !important;
+}
+
+/* Plotly Chart Containers */
+[data-testid="stPlotlyChart"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-card) !important;
+    padding: 0.75rem !important;
+    overflow: hidden !important;
+}
+
+/* Dataframe Containers */
+[data-testid="stDataFrame"],
+[data-testid="stDataFrameResizable"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-card) !important;
+    overflow: hidden !important;
+}
+
+/* Demo Banner */
+.demo-banner {
+    background: linear-gradient(90deg, #6366F1 0%, #4F46E5 100%);
+    color: #FFFFFF;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.04em;
+    margin: 0.5rem 0;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   14. Responsive Rules
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+    .pipeline-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .page-header-title { font-size: 1.375rem !important; }
+    .kpi-value         { font-size: 1.375rem !important; }
+    .auth-card-container { padding: 1.5rem 1.25rem !important; }
+    .pipeline-bar      { grid-template-columns: 1fr; }
+    .stepper-wrapper   { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+}
