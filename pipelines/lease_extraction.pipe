@@ -1,30 +1,14 @@
 {
   "components": [
     {
-      "id": "webhook_1",
-      "provider": "webhook",
+      "id": "chat_1",
+      "provider": "chat",
       "config": {
         "hideForm": true,
         "mode": "Source",
         "parameters": {},
-        "type": "webhook"
+        "type": "chat"
       }
-    },
-    {
-      "id": "parse_1",
-      "provider": "parse",
-      "config": {},
-      "input": [
-        { "lane": "tags", "from": "webhook_1" }
-      ]
-    },
-    {
-      "id": "question_1",
-      "provider": "question",
-      "config": {},
-      "input": [
-        { "lane": "text", "from": "parse_1" }
-      ]
     },
     {
       "id": "llm_gemini_1",
@@ -40,7 +24,7 @@
         "parameters": {}
       },
       "input": [
-        { "lane": "questions", "from": "question_1" }
+        { "lane": "questions", "from": "chat_1" }
       ]
     },
     {
@@ -53,11 +37,7 @@
     }
   ],
   "project_id": "8fa5de20-5693-4920-af24-299d52d5d1f2",
-  "source": "webhook_1",
-  "viewport": {
-    "x": 0,
-    "y": 0,
-    "zoom": 1
-  },
+  "source": "chat_1",
+  "viewport": { "x": 0, "y": 0, "zoom": 1 },
   "version": 1
 }

@@ -74,11 +74,11 @@ def show_dashboard() -> None:
     # Sidebar
     with st.sidebar:
         st.markdown("# 🏢 LeaseGuard AI")
-        st.caption("v1.0.0 - Phase 5")
+        st.caption("v1.0.0 - Phase 7")
 
         # Demo mode indicator
         if is_demo_mode():
-            st.warning("🎭 DEMO MODE", icon="⚠️")
+            st.warning("🎭 DEMO DATA — NOT REAL ANALYSIS", icon="⚠️")
 
         st.markdown("---")
 

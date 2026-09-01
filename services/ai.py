@@ -52,7 +52,7 @@ def _load_pipeline(*, fallback_to_groq: bool = False) -> dict[str, Any]:
     return pipeline
 
 
-async def extract_lease(lease_text: str, *, use_groq_fallback: bool = True) -> dict[str, Any]:
+async def _run_question(question: Question, *, use_groq_fallback: bool = True) -> dict[str, Any]:
     providers = _provider_cfgs()
     if not providers:
         raise RuntimeError(
@@ -72,13 +72,8 @@ async def extract_lease(lease_text: str, *, use_groq_fallback: bool = True) -> d
 
                 pipeline = _load_pipeline(fallback_to_groq=provider_name == "groq")
                 try:
-                    result = await client.use(pipeline=pipeline, source="webhook_1", name="lease_extraction")
-                    response = await client.send(
-                        result["token"],
-                        lease_text,
-                        objinfo={"name": "lease.txt"},
-                        mimetype="text/plain",
-                    )
+                    result = await client.use(pipeline=pipeline, source="chat_1", name="lease_extraction")
+                    response = await client.chat(token=result["token"], question=question)
                     if response.get("answers"):
                         return {
                             "provider": "llm_openai_api" if provider_name == "groq" else "llm_gemini",
@@ -91,35 +86,41 @@ async def extract_lease(lease_text: str, *, use_groq_fallback: bool = True) -> d
                         raise RuntimeError(f"Groq fallback failed: {exc}") from exc
                     continue
 
-            raise RuntimeError("No valid Lease Extraction response was returned.")
+            raise RuntimeError("RocketRide returned no usable answer.")
     except RuntimeError:
         raise
     except Exception as exc:  # pragma: no cover - surfaced to caller
-        raise RuntimeError(f"Lease extraction failed: {exc}") from exc
+        raise RuntimeError(f"RocketRide request failed: {exc}") from exc
 
 
-async def extract_lease_with_question(lease_text: str) -> dict[str, Any]:
-    providers = _provider_cfgs()
-    if not providers:
-        raise RuntimeError(
-            "No LLM provider keys are configured. Add ROCKETRIDE_GEMINI_KEY or ROCKETRIDE_GROQ_KEY + ROCKETRIDE_GROQ_BASE_URL to your .env file."
+async def extract_lease(
+    document_text: str, *, document_type: str = "lease", use_groq_fallback: bool = True
+) -> dict[str, Any]:
+    """Extract structured lease or invoice fields through the RocketRide chat pipeline."""
+    if document_type == "invoice":
+        instruction = (
+            "Extract invoice amounts. Return only JSON with cam_expense, rent_amount, "
+            "admin_fee_amount, tax_amount, total_amount, and tenant_share_pct. Use numbers, "
+            "not currency strings. If a required value is unavailable, omit it rather than guessing."
+        )
+    else:
+        instruction = (
+            "Extract lease audit terms. Return only JSON with base_rent, cam_cap_pct, "
+            "tenant_share_pct, annual_increase_pct, excluded_expenses, and any supporting lease terms. "
+            "Use decimals for percentages and numbers for money. Omit unknown values; do not guess."
         )
     question = Question(expectJson=True)
-    question.addQuestion(
-        "Extract the material lease terms, parties, dates, rent, escalations, deadlines, obligations, and risks. "
-        "Return only valid JSON with clear field names."
-    )
-    question.addContext(lease_text)
+    question.addQuestion(instruction)
+    question.addContext(document_text)
+    return await _run_question(question, use_groq_fallback=use_groq_fallback)
 
-    provider_name, _ = providers[0]
-    client = RocketRideClient()
-    async with client:
-        pipeline = _load_pipeline(fallback_to_groq=provider_name == "groq")
-        result = await client.use(pipeline=pipeline, source="webhook_1", name="lease_extraction")
-        response = await client.send(
-            result["token"],
-            lease_text,
-            objinfo={"name": "lease.txt"},
-            mimetype="text/plain",
-        )
-        return {"provider": "llm_openai_api" if provider_name == "groq" else "llm_gemini", "result": response}
+
+async def generate_dispute_draft(prompt: str) -> dict[str, Any]:
+    """Generate a text draft through the same RocketRide pipeline."""
+    question = Question(expectJson=False)
+    question.addQuestion(
+        "Write a concise dispute draft based only on the supplied context. Clearly label it as a draft "
+        "for human review. Do not invent lease clauses or give legal advice."
+    )
+    question.addContext(prompt)
+    return await _run_question(question)

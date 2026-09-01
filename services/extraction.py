@@ -115,7 +115,7 @@ def extract_invoice_data(text: str) -> Dict[str, Any]:
         from services.ai import extract_lease
 
         # Run async function in sync context
-        result = asyncio.run(extract_lease(text))
+        result = asyncio.run(extract_lease(text, document_type="invoice"))
 
         # Parse and validate result as invoice
         extracted = _parse_extraction_response(result, "invoice")
@@ -142,9 +142,9 @@ def generate_dispute_draft(property_name: str, amount: float, recovery_status: s
         f"the recovery status as {recovery_status}. Do not make legal conclusions or invent lease clauses."
     )
     try:
-        from services.ai import extract_lease_with_question
+        from services.ai import generate_dispute_draft as rocketride_generate_dispute_draft
 
-        result = asyncio.run(extract_lease_with_question(prompt))
+        result = asyncio.run(rocketride_generate_dispute_draft(prompt))
         answers = result.get("result", {}).get("answers", [])
         if not answers or not isinstance(answers[0], str) or not answers[0].strip():
             raise RuntimeError("RocketRide returned an incomplete dispute draft")
